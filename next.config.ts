@@ -1,0 +1,48 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'example.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'example.com',
+      },
+      // Allow all hostnames for development (you can restrict this in production)
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+    // Allow unoptimized images for external domains that might not be configured
+    unoptimized: false,
+  },
+  // Optimize compilation and prevent hanging
+  experimental: {
+    // Reduce memory usage during compilation
+    optimizePackageImports: ['react-icons'],
+  },
+  // Reduce bundle size
+  modularizeImports: {
+    'react-icons': {
+      transform: 'react-icons/{{member}}',
+    },
+  },
+};
+
+export default nextConfig;

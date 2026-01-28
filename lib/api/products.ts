@@ -1,0 +1,282 @@
+import { apiClient } from './axios';
+import { API_ENDPOINTS } from '../utils/constants';
+
+export interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  shortDescription?: string;
+  price: number;
+  originalPrice?: number;
+  category: string;
+  images: string[];
+  featured: boolean;
+  published: boolean;
+  stockQuantity: number;
+  sku?: string;
+  status?: string;
+
+  // Vastu specific fields
+  productType?: string;
+  vastuPurpose?: string;
+  energyType?: string;
+  material?: string;
+  dimensions?: {
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProductRequest {
+  name: string;
+  slug: string;
+  description: string;
+  shortDescription?: string;
+  price: number;
+  originalPrice?: number;
+  category: string;
+  images?: string[];
+  imageFiles?: File[];
+  featured?: boolean;
+  published?: boolean;
+  stockQuantity: number;
+  sku?: string;
+  status?: string;
+
+  // Vastu specific fields
+  productType?: string;
+  vastuPurpose?: string;
+  energyType?: string;
+  material?: string;
+  dimensions?: {
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  tags?: string[];
+}
+
+export interface UpdateProductRequest {
+  name?: string;
+  description?: string;
+  price?: number;
+  originalPrice?: number;
+  category?: string;
+  images?: string[];
+  imageFiles?: File[];
+  featured?: boolean;
+  published?: boolean;
+  stockQuantity?: number;
+  weight?: number;
+  dimensions?: {
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  tags?: string[];
+
+  // Vastu specific fields
+  productType?: string;
+  vastuPurpose?: string;
+  energyType?: string;
+  material?: string;
+}
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  message: string;
+}
+
+/**
+ * Helper to create FormData from object
+ */
+const createFormData = (data: any): FormData => {
+  const formData = new FormData();
+  Object.keys(data).forEach(key => {
+    if (key === 'imageFiles') {
+      if (data.imageFiles && Array.isArray(data.imageFiles)) {
+        data.imageFiles.forEach((file: File) => {
+          formData.append('images', file);
+        });
+      }
+    } else if (key === 'dimensions') {
+      // Handle dimensions object
+      if (data[key] !== undefined && data[key] !== null) {
+        const dims = data[key];
+        if (dims.length || dims.width || dims.height) {
+          formData.append(key, JSON.stringify(dims));
+        }
+      }
+    } else if (key === 'tags' || key === 'images') {
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, JSON.stringify(data[key]));
+      }
+    } else if (key === 'featured') {
+      // Convert boolean to string
+      if (data[key] !== undefined) {
+        formData.append(key, data[key] ? 'true' : 'false');
+      }
+    } else if (key === 'status') {
+      // Status is already a string
+      if (data[key] !== undefined && data[key] !== null) {
+        formData.append(key, data[key]);
+      }
+    } else if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+      formData.append(key, data[key].toString());
+    }
+  });
+  return formData;
+};
+
+/**
+ * Products API
+ */
+export const productsApi = {
+  // ... (getters omitted for brevity, assuming they are unchanged unless I replace whole object)
+  /**
+   * Get all products
+   */
+  getAll: async (): Promise<ApiResponse<Product[]>> => {
+    const response = await apiClient.get(API_ENDPOINTS.PRODUCTS.LIST);
+    return response.data;
+  },
+
+  /**
+   * Get featured products
+   */
+  getFeatured: async (): Promise<ApiResponse<Product[]>> => {
+    const response = await apiClient.get(`${API_ENDPOINTS.PRODUCTS.LIST}/featured`);
+    return response.data;
+  },
+
+  /**
+   * Get products by category
+   */
+  getByCategory: async (category: string): Promise<ApiResponse<Product[]>> => {
+    const response = await apiClient.get(`${API_ENDPOINTS.PRODUCTS.LIST}/category/${category}`);
+    return response.data;
+  },
+
+  /**
+   * Get product by ID
+   */
+  getById: async (id: string): Promise<ApiResponse<Product>> => {
+    const response = await apiClient.get(API_ENDPOINTS.PRODUCTS.BY_ID(id));
+    return response.data;
+  },
+
+  /**
+   * Create new product (admin only)
+   */
+  create: async (data: CreateProductRequest): Promise<ApiResponse<Product>> => {
+    try {
+      const formData = createFormData(data);
+      const imageCount = data.imageFiles?.length || 0;
+      // Calculate timeout: 120 seconds per image, minimum 5 minutes, maximum 15 minutes
+      // This ensures frontend timeout is always higher than backend timeout (2 min min, 10 min max)
+      const timeout = Math.min(Math.max(imageCount * 120000, 300000), 900000);
+      
+      console.log(`Uploading ${imageCount} images with ${timeout / 1000}s timeout`);
+      
+      const response = await apiClient.post(API_ENDPOINTS.PRODUCTS.LIST, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: timeout,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const loadedMB = (progressEvent.loaded / (1024 * 1024)).toFixed(2);
+            const totalMB = (progressEvent.total / (1024 * 1024)).toFixed(2);
+            console.log(`Upload progress: ${percentCompleted}% (${loadedMB}MB / ${totalMB}MB)`);
+          }
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Product creation error:', error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        const imageCount = data.imageFiles?.length || 0;
+        const timeoutMinutes = Math.round((imageCount * 120000 || 300000) / 60000);
+        throw new Error(`Upload timed out after ${timeoutMinutes} minutes. Please try again with smaller images (max 5MB each) or fewer files.`);
+      }
+      
+      // Extract error message from response
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const validationErrors = errorData.errors.map((e: any) => `${e.param || e.field}: ${e.msg || e.message}`).join(', ');
+          throw new Error(`Validation failed: ${validationErrors}`);
+        }
+        throw new Error(errorData.message || 'Failed to create product');
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Update product (admin only)
+   */
+  update: async (id: string, data: UpdateProductRequest): Promise<ApiResponse<Product>> => {
+    try {
+      const formData = createFormData(data);
+      const imageCount = data.imageFiles?.length || 0;
+      // Calculate timeout: 120 seconds per image, minimum 5 minutes, maximum 15 minutes
+      const timeout = Math.min(Math.max(imageCount * 120000, 300000), 900000);
+      
+      console.log(`Updating product with ${imageCount} images, timeout: ${timeout / 1000}s`);
+      
+      const response = await apiClient.put(API_ENDPOINTS.PRODUCTS.BY_ID(id), formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: timeout,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const loadedMB = (progressEvent.loaded / (1024 * 1024)).toFixed(2);
+            const totalMB = (progressEvent.total / (1024 * 1024)).toFixed(2);
+            console.log(`Update upload progress: ${percentCompleted}% (${loadedMB}MB / ${totalMB}MB)`);
+          }
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Product update error:', error);
+      
+      // Handle timeout errors specifically
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        const imageCount = data.imageFiles?.length || 0;
+        const timeoutMinutes = Math.round((imageCount * 120000 || 300000) / 60000);
+        throw new Error(`Upload timed out after ${timeoutMinutes} minutes. Please try again with smaller images (max 5MB each) or fewer files.`);
+      }
+      
+      // Extract error message from response
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const validationErrors = errorData.errors.map((e: any) => `${e.param || e.field}: ${e.msg || e.message}`).join(', ');
+          throw new Error(`Validation failed: ${validationErrors}`);
+        }
+        throw new Error(errorData.message || 'Failed to update product');
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Delete product (admin only)
+   */
+  delete: async (id: string): Promise<ApiResponse> => {
+    const response = await apiClient.delete(API_ENDPOINTS.PRODUCTS.BY_ID(id));
+    return response.data;
+  },
+};
