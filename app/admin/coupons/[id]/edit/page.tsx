@@ -21,32 +21,32 @@ const couponSchema = z.object({
   description: z.string().optional(),
   couponType: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).optional(),
   discountValue: z.coerce
-    .number({ invalid_type_error: 'Discount value must be a number' })
-    .refine((val) => isNaN(val) || val > 0, { message: 'Discount value must be positive' })
+    .number()
+    .refine((val) => isNaN(val) || val > 0, { message: 'Discount value must be a positive number' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),
   minPurchase: z.coerce
-    .number({ invalid_type_error: 'Minimum purchase must be a number' })
-    .refine((val) => isNaN(val) || val >= 0, { message: 'Minimum purchase must be non-negative' })
+    .number()
+    .refine((val) => isNaN(val) || val >= 0, { message: 'Minimum purchase must be a non-negative number' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),
   maxDiscount: z.coerce
-    .number({ invalid_type_error: 'Maximum discount must be a number' })
-    .refine((val) => isNaN(val) || val >= 0, { message: 'Maximum discount must be non-negative' })
+    .number()
+    .refine((val) => isNaN(val) || val >= 0, { message: 'Maximum discount must be a non-negative number' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),
   usageLimit: z.coerce
-    .number({ invalid_type_error: 'Usage limit must be a number' })
-    .refine((val) => isNaN(val) || val >= 1, { message: 'Usage limit must be at least 1' })
+    .number()
+    .refine((val) => isNaN(val) || val >= 1, { message: 'Usage limit must be a number and at least 1' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),
   userLimit: z.coerce
-    .number({ invalid_type_error: 'User limit must be a number' })
-    .refine((val) => isNaN(val) || val >= 1, { message: 'User limit must be at least 1' })
+    .number()
+    .refine((val) => isNaN(val) || val >= 1, { message: 'User limit must be a number and at least 1' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),

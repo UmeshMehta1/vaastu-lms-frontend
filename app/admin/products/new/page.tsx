@@ -28,23 +28,23 @@ const vastuProductSchema = z.object({
 
   // Pricing - coerce string to number, then validate
   price: z.coerce
-    .number({ required_error: 'Price is required', invalid_type_error: 'Price must be a number' })
+    .number()
     .refine((val) => !isNaN(val), { message: 'Price is required' })
-    .refine((val) => val >= 0, { message: 'Price must be positive' }),
+    .refine((val) => val >= 0, { message: 'Price must be a positive number' }),
   
   originalPrice: z.coerce
-    .number({ invalid_type_error: 'Original price must be a number' })
-    .refine((val) => isNaN(val) || val >= 0, { message: 'Original price must be positive' })
+    .number()
+    .refine((val) => isNaN(val) || val >= 0, { message: 'Original price must be a positive number' })
     .transform((val) => isNaN(val) ? undefined : val)
     .optional()
     .or(z.undefined()),
 
   // Inventory
   stockQuantity: z.coerce
-    .number({ required_error: 'Stock quantity is required', invalid_type_error: 'Stock must be a number' })
+    .number()
     .refine((val) => !isNaN(val), { message: 'Stock quantity is required' })
     .refine((val) => Number.isInteger(val), { message: 'Stock must be an integer' })
-    .refine((val) => val >= 0, { message: 'Stock must be non-negative' }),
+    .refine((val) => val >= 0, { message: 'Stock must be a non-negative number' }),
 
   // Product type (Vastu specific) - with default fallback
   productType: z.enum(['VASTU_ITEM', 'CONSULTATION_PACKAGE', 'DIGITAL_PRODUCT', 'PHYSICAL_PRODUCT'], {
