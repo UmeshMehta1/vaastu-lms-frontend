@@ -20,36 +20,61 @@ const couponSchema = z.object({
   code: z.string().min(3, 'Code must be at least 3 characters').max(50, 'Code must be at most 50 characters').optional(),
   description: z.string().optional(),
   couponType: z.enum(['PERCENTAGE', 'FIXED_AMOUNT']).optional(),
-  discountValue: z.coerce
-    .number()
-    .refine((val) => isNaN(val) || val > 0, { message: 'Discount value must be a positive number' })
-    .transform((val) => isNaN(val) ? undefined : val)
-    .optional()
-    .or(z.undefined()),
-  minPurchase: z.coerce
-    .number()
-    .refine((val) => isNaN(val) || val >= 0, { message: 'Minimum purchase must be a non-negative number' })
-    .transform((val) => isNaN(val) ? undefined : val)
-    .optional()
-    .or(z.undefined()),
-  maxDiscount: z.coerce
-    .number()
-    .refine((val) => isNaN(val) || val >= 0, { message: 'Maximum discount must be a non-negative number' })
-    .transform((val) => isNaN(val) ? undefined : val)
-    .optional()
-    .or(z.undefined()),
-  usageLimit: z.coerce
-    .number()
-    .refine((val) => isNaN(val) || val >= 1, { message: 'Usage limit must be a number and at least 1' })
-    .transform((val) => isNaN(val) ? undefined : val)
-    .optional()
-    .or(z.undefined()),
-  userLimit: z.coerce
-    .number()
-    .refine((val) => isNaN(val) || val >= 1, { message: 'User limit must be a number and at least 1' })
-    .transform((val) => isNaN(val) ? undefined : val)
-    .optional()
-    .or(z.undefined()),
+  discountValue: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.union([
+      z.number().refine((val) => val > 0, { message: 'Discount value must be a positive number' }),
+      z.undefined()
+    ])
+  ),
+  minPurchase: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.union([
+      z.number().refine((val) => val >= 0, { message: 'Minimum purchase must be a non-negative number' }),
+      z.undefined()
+    ])
+  ),
+  maxDiscount: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.union([
+      z.number().refine((val) => val >= 0, { message: 'Maximum discount must be a non-negative number' }),
+      z.undefined()
+    ])
+  ),
+  usageLimit: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.union([
+      z.number().int().refine((val) => val >= 1, { message: 'Usage limit must be a number and at least 1' }),
+      z.undefined()
+    ])
+  ),
+  userLimit: z.preprocess(
+    (val) => {
+      if (val === '' || val === null || val === undefined) return undefined;
+      const num = Number(val);
+      return isNaN(num) ? undefined : num;
+    },
+    z.union([
+      z.number().int().refine((val) => val >= 1, { message: 'User limit must be a number and at least 1' }),
+      z.undefined()
+    ])
+  ),
   validFrom: z.string().optional(),
   validUntil: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'EXPIRED']).optional(),
